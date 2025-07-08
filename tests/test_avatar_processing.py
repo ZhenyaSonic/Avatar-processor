@@ -1,9 +1,11 @@
-from django.test import TestCase
-from django.core.files.uploadedfile import SimpleUploadedFile
-from avatars.models import Profile
-from PIL import Image
-from io import BytesIO
 import os
+from io import BytesIO
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from PIL import Image
+
+from avatars.models import Profile
 
 
 class AvatarProcessingTest(TestCase):

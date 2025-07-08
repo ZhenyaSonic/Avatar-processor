@@ -1,8 +1,9 @@
-from django.db import models
-from django.core.files.base import ContentFile
-from PIL import Image
-from io import BytesIO
 import os
+from io import BytesIO
+
+from django.core.files.base import ContentFile
+from django.db import models
+from PIL import Image
 
 
 class Profile(models.Model):
