@@ -20,8 +20,8 @@
 -   Убедитесь, что у вас установлены `Docker` и `docker-compose`.
 -   Склонируйте репозиторий на ваш компьютер:
     ```bash
-    git clone <your-repo-url>
-    cd <repo-folder>
+    git clone https://github.com/ZhenyaSonic/Avatar-processor.git
+    cd avatar_processor
     ```
 -   Создайте файл с переменными окружения на основе примера:
     ```bash
