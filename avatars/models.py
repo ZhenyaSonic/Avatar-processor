@@ -1,53 +1,61 @@
 import os
-from io import BytesIO
-
-from django.core.files.base import ContentFile
+import uuid
 from django.db import models
-from PIL import Image
+from django.conf import settings
+from django.core.files.base import ContentFile
+from .utils import process_image
+from .validators import validate_image_file_extension, validate_image_size
+
+
+def get_avatar_upload_path(instance, filename):
+    """
+    Генерирует уникальный путь для аватара пользователя.
+    Пример: avatars/user_1/f7b4c4ec-9d6a-4c2s-8f0d-2b3a6a1c8b7e.jpg
+    """
+    ext = os.path.splitext(filename)[1]
+    new_filename = f"{uuid.uuid4()}{ext}"
+    return os.path.join('avatars', f'user_{instance.user.id}', new_filename)
 
 
 class Profile(models.Model):
-    name = models.CharField(max_length=100)
-    avatar = models.ImageField(upload_to='avatars/')
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
+    # Имя можно убрать, если оно дублирует user.first_name, или оставить для никнейма
+    name = models.CharField(max_length=100, blank=True)
+    avatar = models.ImageField(
+        upload_to=get_avatar_upload_path,
+        validators=[validate_image_file_extension, validate_image_size],
+        blank=True,
+        null=True
+    )
 
     def save(self, *args, **kwargs):
-        # Если аватар был изменен, обрабатываем его перед сохранением
-        if self.pk and self.avatar:
-            try:
-                # Получаем предыдущий объект, чтобы проверить изменился ли файл
-                old_obj = Profile.objects.get(pk=self.pk)
-                if old_obj.avatar == self.avatar:
-                    # Файл не менялся, просто сохраняем модель
-                    super().save(*args, **kwargs)
-                    return
-            except Profile.DoesNotExist:
-                pass
+        # Логика обработки аватара при изменении
+        if self._is_avatar_changed() and self.avatar:
+            processed_buffer = process_image(self.avatar)
+            if processed_buffer:
+                original_filename = os.path.basename(self.avatar.name)
+                self.avatar.file = ContentFile(
+                    processed_buffer.read(),
+                    name=original_filename
+                )
 
-        if self.avatar:
-            # Открываем изображение
-            pil_img = Image.open(self.avatar)
-
-            # 1. Обрезка до квадрата (crop)
-            width, height = pil_img.size
-            if width != height:
-                min_dim = min(width, height)
-                left = (width - min_dim) // 2
-                top = (height - min_dim) // 2
-                right = (width + min_dim) // 2
-                bottom = (height + min_dim) // 2
-                pil_img = pil_img.crop((left, top, right, bottom))
-
-            # 2. Сжатие без заметной потери качества
-            buffer = BytesIO()
-            pil_img.save(buffer, format='JPEG', quality=85, optimize=True)
-
-            # Получаем имя файла
-            image_name = os.path.basename(self.avatar.name)
-
-            # Заменяем исходный файл обработанным в памяти
-            self.avatar.file = ContentFile(buffer.getvalue(), name=image_name)
+        # Если имя не задано, используем username пользователя
+        if not self.name:
+            self.name = self.user.username
 
         super().save(*args, **kwargs)
 
+    def _is_avatar_changed(self):
+        if not self.pk: return True
+        try:
+            old_avatar = Profile.objects.get(pk=self.pk).avatar
+        except Profile.DoesNotExist:
+            return True
+        return old_avatar != self.avatar
+
     def __str__(self):
-        return self.name
+        return f'Profile for {self.user.username}'
