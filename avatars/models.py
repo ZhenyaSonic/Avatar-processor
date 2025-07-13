@@ -1,8 +1,10 @@
 import os
 import uuid
-from django.db import models
+
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.db import models
+
 from .utils import process_image
 from .validators import validate_image_file_extension, validate_image_size
 

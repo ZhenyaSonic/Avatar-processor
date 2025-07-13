@@ -1,6 +1,7 @@
-from PIL import Image
 from io import BytesIO
+
 from django.conf import settings
+from PIL import Image
 
 
 def process_image(image_file, quality=85, target_format='JPEG'):

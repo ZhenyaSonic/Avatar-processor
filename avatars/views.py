@@ -1,11 +1,8 @@
-from rest_framework import viewsets, generics, permissions
+from rest_framework import generics, permissions, viewsets
+
 from .models import Profile, SharedImage
-from .serializers import (
-    ProfileSerializer,
-    UserCreateSerializer,
-    SharedImageSerializer
-)
-from .permissions import IsOwnerOrReadOnly, CanViewOrOwnerCanModify
+from .permissions import CanViewOrOwnerCanModify, IsOwnerOrReadOnly
+from .serializers import ProfileSerializer, SharedImageSerializer, UserCreateSerializer
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
