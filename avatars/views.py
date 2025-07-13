@@ -1,7 +1,11 @@
 from rest_framework import viewsets, generics, permissions
-from .models import Profile
-from .serializers import ProfileSerializer, UserCreateSerializer
-from .permissions import IsOwnerOrReadOnly
+from .models import Profile, SharedImage
+from .serializers import (
+    ProfileSerializer,
+    UserCreateSerializer,
+    SharedImageSerializer
+)
+from .permissions import IsOwnerOrReadOnly, CanViewOrOwnerCanModify
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -26,4 +30,32 @@ class ProfileViewSet(viewsets.ModelViewSet):
 class UserCreateAPIView(generics.CreateAPIView):
     """Эндпоинт для регистрации новых пользователей."""
     serializer_class = UserCreateSerializer
-    permission_classes = [permissions.AllowAny] # Разрешаем доступ всем
+    permission_classes = [permissions.AllowAny]  # Разрешаем доступ всем
+
+
+class SharedImageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для обмена изображениями.
+    - list:     GET /api/shared_images/ - получить список изображений, которыми поделились с вами
+    - create:   POST /api/shared_images/ - загрузить и поделиться новым изображением
+    - retrieve: GET /api/shared_images/{id}/ - посмотреть конкретное изображение
+    - destroy:  DELETE /api/shared_images/{id}/ - удалить свое изображение
+    """
+    serializer_class = SharedImageSerializer
+    permission_classes = [permissions.IsAuthenticated, CanViewOrOwnerCanModify]
+    # Запрещаем методы PUT и PATCH
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        """
+        Этот метод определяет, какие объекты будут видны пользователю.
+        Пользователь видит:
+        1. Изображения, которыми он владеет.
+        2. Изображения, которыми с ним поделились.
+        """
+        user = self.request.user
+        # Используем Q-объекты для сложной фильтрации (OR)
+        from django.db.models import Q
+        return SharedImage.objects.filter(
+            Q(owner=user) | Q(shared_with=user)
+        ).distinct().select_related('owner').prefetch_related('shared_with')

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile
+from .models import Profile, SharedImage
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -36,3 +36,30 @@ class UserCreateSerializer(serializers.ModelSerializer):
             email=validated_data.get('email', '')
         )
         return user
+
+
+class SharedImageSerializer(serializers.ModelSerializer):
+    owner = UserSerializer(read_only=True)
+    # Используем PrimaryKeyRelatedField для получения списка ID пользователей при создании/обновлении
+    shared_with = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=User.objects.all(),
+        required=False  # Делаем поле необязательным
+    )
+
+    class Meta:
+        model = SharedImage
+        fields = [
+            'id',
+            'owner',
+            'image',
+            'caption',
+            'shared_with',
+            'created_at'
+        ]
+        read_only_fields = ['owner', 'created_at']
+
+    def create(self, validated_data):
+        # Устанавливаем текущего пользователя как владельца изображения
+        validated_data['owner'] = self.context['request'].user
+        return super().create(validated_data)
